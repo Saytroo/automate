@@ -1,0 +1,4 @@
+discord.py
+python-dotenv
+firebase-admin
+Flask
