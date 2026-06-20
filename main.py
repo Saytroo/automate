@@ -1,7 +1,7 @@
 import os
 import datetime
 from threading import Thread
-
+import asyncio
 import discord
 import dotenv
 import firebase_admin
@@ -100,6 +100,80 @@ async def update_birthday_list_message():
 # ==========================================
 # COMMANDES DU BOT
 # ==========================================
+import discord
+from discord.ext import commands
+import asyncio
+
+import discord
+from discord.ext import commands
+import asyncio
+
+@commands.command(name="dmall")
+@commands.has_permissions(administrator=True)
+async def dm_all(ctx, *, message: str):
+    """Envoie un message privé à tout le monde et nettoie tout après."""
+    
+    # 1. On supprime DIRECTEMENT le message de commande de l'admin (ex: !dmall text)
+    
+    await ctx.message.delete()
+    
+
+    # 2. On envoie le message de statut temporaire
+    status_message = await ctx.send("⏳ Envoi du message en cours...")
+    
+    guild = ctx.guild
+    success_count = 0
+    fail_count = 0
+
+    embed = discord.Embed(
+        title="📢 Annonce importante",
+        description=f"Message de {ctx.author.mention} :\n\n{message}",
+        color=discord.Color.red()
+    )
+    if guild.icon:
+        embed.set_thumbnail(url=guild.icon.url)
+
+    async for member in guild.fetch_members(limit=None):
+        if member.bot or member.id == ctx.author.id:
+            continue
+            
+        try:
+            await member.send(embed=embed)
+            success_count += 1
+            await asyncio.sleep(0.3) 
+        except (discord.Forbidden, discord.HTTPException):
+            fail_count += 1
+
+    # 3. Le DM All est fini : on modifie le statut pour afficher le résultat,
+    # et on lui dit de s'autodétruire après 10 secondes !
+    await status_message.edit(
+        content=f"📢 **DM All terminé !**\n✅ Envoyés : {success_count}\n❌ Échecs : {fail_count}"
+    )
+    await asyncio.sleep(5)
+    await status_message.delete()
+
+
+# --- GESTION DES ERREURS AUTONETTOYANTE ---
+@dm_all.error
+async def dm_all_error(ctx, error):
+    # Dans tous les cas, on essaie de supprimer le message de commande raté de l'utilisateur
+    try:
+        await ctx.message.delete()
+    except discord.Forbidden:
+        pass
+
+    # Messages d'erreur qui s'autodétruisent après 5 secondes (`delete_after=5`)
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send(
+            f"❌ {ctx.author.mention}, tu dois être `Administrateur` pour utiliser cette commande.", 
+            delete_after=5
+        )
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send(
+            f"❌ Syntaxe incorrecte. Exemple : `{ctx.prefix}dmall [Votre message ici]`", 
+            delete_after=5
+        )
+
 
 @bot.command(name="anniv")
 async def register_birthday(ctx, date_str: str):
