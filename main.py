@@ -171,6 +171,18 @@ async def blacklist(ctx, user: discord.User):
         "timestamp": firestore.SERVER_TIMESTAMP
     })
 
+    try:
+        member = ctx.guild.get_member(user.id)
+        if member is not None:
+            try:
+                await ctx.guild.ban(member, reason="Utilisateur dans la blacklist.")
+            except discord.Forbidden:
+                await ctx.send("❌ Je n'ai pas la permission de bannir cet utilisateur.", delete_after=5)
+            except Exception as e:
+                print(f"Erreur lors du ban du membre présent: {e}")
+    except Exception as e:
+        print(f"Erreur lors de la vérification du membre: {e}")
+
     await ctx.send(f"✅ L'utilisateur {user.mention} a été ajouté à la blacklist.", delete_after=5)
 
 @bot.command(aliases=["unbl"])
