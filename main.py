@@ -129,7 +129,7 @@ async def register_birthday(ctx, date_str: str):
     embed.add_field(name="Utilisateur", value=ctx.author.name, inline=True)
     embed.add_field(name="Date", value=readable_format, inline=True)
     embed.set_thumbnail(url=ctx.author.display_avatar.url)
-    embed.set_footer(text="Tu recevras une surprise le jour J ! ✨")
+    embed.set_footer(text="✨")
 
     await ctx.send(embed=embed)
 
