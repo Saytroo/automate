@@ -152,6 +152,53 @@ async def dm_all(ctx, *, message: str):
     await asyncio.sleep(5)
     await status_message.delete()
 
+@bot.command(aliases=["bl"])
+async def blacklist(ctx, user: discord.User):
+    """
+    Commande pour ajouter un utilisateur à la blacklist.
+    Seuls les administrateurs peuvent utiliser cette commande.
+    """
+
+    if not ctx.author.guild_permissions.administrator:
+        await ctx.send("❌ Vous n'avez pas la permission d'utiliser cette commande.", delete_after=5)
+        return
+
+
+    db.collection("blacklist").document(str(user.id)).set({
+        "username": user.name,
+        "discriminator": user.discriminator,
+        "added_by": ctx.author.name,
+        "timestamp": firestore.SERVER_TIMESTAMP
+    })
+
+    await ctx.send(f"✅ L'utilisateur {user.mention} a été ajouté à la blacklist.", delete_after=5)
+
+@bot.command(aliases=["unbl"])
+async def unblacklist(ctx, user: discord.User):
+    """
+    Commande pour retirer un utilisateur de la blacklist.
+    Seuls les administrateurs peuvent utiliser cette commande.
+    """
+
+    if not ctx.author.guild_permissions.administrator:
+        await ctx.send("❌ Vous n'avez pas la permission d'utiliser cette commande.", delete_after=5)
+        return
+
+    doc_ref = db.collection("blacklist").document(str(user.id))
+    doc = doc_ref.get()
+
+    if doc.exists:
+        doc_ref.delete()
+        try:
+            await ctx.guild.unban(user)
+        except discord.NotFound:
+            pass
+        except Exception:
+            pass
+        await ctx.send(f"✅ L'utilisateur {user.mention} a été retiré de la blacklist.", delete_after=5)
+    else:
+        await ctx.send(f"⚠️ L'utilisateur {user.mention} n'est pas dans la blacklist.", delete_after=5)
+
 
 # --- GESTION DES ERREURS AUTONETTOYANTE ---
 @dm_all.error
@@ -268,6 +315,19 @@ async def on_ready():
     if not check_birthdays.is_running():
         check_birthdays.start()
 
+@bot.event
+async def on_member_join(member):
+    """
+    Événement déclenché lorsqu'un membre rejoint le serveur.
+    Vérifie si le membre est dans la blacklist et le bannit si c'est le cas.
+    """
+    # Vérifie si l'utilisateur est dans la blacklist
+    doc_ref = db.collection("blacklist").document(str(member.id))
+    doc = doc_ref.get()
+
+    if doc.exists:
+        await member.ban(reason="Utilisateur dans la blacklist.")
+        print(f"🚫 {member.name} est dans la blacklist.")
 
 # ==========================================
 # KEEP ALIVE (FLASK FOR RENDER)
